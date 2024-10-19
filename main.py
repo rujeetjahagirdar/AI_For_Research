@@ -58,7 +58,7 @@ def get_semantic_citedby_details(paper_id):
 
 def get_semantic_author_afiiliation(author_id):
     res = requests.get(f'https://api.semanticscholar.org/graph/v1/author/{author_id}?fields=affiliations').json()
-    # print(res)
+    print(res)
     return res['affiliations']
 
 def get_semantic_author_details(author_url):
