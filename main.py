@@ -1,6 +1,7 @@
 from scholarly import scholarly, ProxyGenerator
 import re
 import requests
+import time
 import pandas as pd
 from streamlit import query_params
 
@@ -57,7 +58,7 @@ def get_semantic_citedby_details(paper_id):
     return cited_papers_titles
 
 def get_semantic_author_afiiliation(author_id):
-    res = requests.get(f'https://api.semanticscholar.org/graph/v1/author/{author_id}?fields=affiliations').json()
+    res = requests.get(f'https://api.semanticscholar.org/graph/v1/author/{author_id}?fields=name,affiliations').json()
     # print(res)
     return res['affiliations']
 
@@ -74,16 +75,20 @@ def get_semantic_author_details(author_url):
     response = requests.get(author_url).json()
 
     for i in range(len(response['papers'])):
+        print("Processing Paper: ",response['papers'][i]['title'])
         pid = response['papers'][i]['paperId']
+        print("\tGetting citedBy list...")
         response['papers'][i]['citedBy'] = get_semantic_citedby_details(pid)
         # print(response['papers'][i]['publicationVenue'])
         response['papers'][i]['publicationVenue'] = response['papers'][i]['publicationVenue']['name'] if response['papers'][i]['publicationVenue'] else ''
         for j in range(len(response['papers'][i]['authors'])):
+            print("\tProcessing author: ",response['papers'][i]['authors'][j]['name'])
             a_id = response['papers'][i]['authors'][j]['authorId']
             response['papers'][i]['authors'][j]['affiliations'] = get_semantic_author_afiiliation(a_id)
         #     break
+        print("Sleeping 3 seconds...")
+        time.sleep(3)
         # break
-    # print(response)
     return response
 
 
@@ -91,8 +96,22 @@ def get_semantic_author_details(author_url):
 # a = get_google_author_details('https://scholar.google.com/citations?user=-zSd9V0AAAAJ&hl=en')
 # print(a)
 
-a = get_semantic_author_details('https://www.semanticscholar.org/author/Sihong-He/2049027478')
-print(a)
+data = get_semantic_author_details('https://www.semanticscholar.org/author/Sihong-He/2049027478')
+print("data= ",data)
+papers_data = []
+for paper in data['papers']:
+    print("paper= ",paper)
+    papers_data.append({
+        "name": data['name'],
+        "affiliations": data['affiliations'],
+        "title": paper['title'],
+        "publicationVenue": paper['publicationVenue'],
+        "publicationDate": paper['publicationDate'],
+        "authors_details": [[author['name'],author['affiliations']] for author in paper['authors']],
+        "citedBy": paper['citedBy']
+    })
+papers_df = pd.DataFrame(papers_data)
+print(papers_df)
 
-# a = get_semantic_paper_details('18763b34cd0d476c084498ffa180c67c76e485d1')
-# print(a)
+papers_df.to_csv('semantic_scholar_output.csv')
+
